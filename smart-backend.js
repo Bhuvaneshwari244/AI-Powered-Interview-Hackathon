@@ -9,6 +9,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
+const OpenAI = require('openai');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +22,11 @@ const io = new Server(server, {
 
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'temporary-mock-secret-key-for-testing';
+
+// Initialize OpenAI (will try to use it first)
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+}) : null;
 
 // In-memory storage
 const users = new Map();
@@ -164,7 +170,72 @@ const questionBank = {
 };
 
 // Intelligent question generation based on resume and JD
-function generateSmartQuestions(resumeData, jobDescriptionData, config) {
+async function generateSmartQuestions(resumeData, jobDescriptionData, config) {
+  // Try OpenAI first if available
+  if (openai) {
+    try {
+      console.log('🤖 Attempting to use OpenAI GPT-3.5-turbo...');
+      const questions = await generateQuestionsWithOpenAI(resumeData, jobDescriptionData, config);
+      console.log('✅ Successfully generated questions using OpenAI');
+      return questions;
+    } catch (error) {
+      console.log(`⚠️  OpenAI failed (${error.message}), falling back to smart algorithm`);
+    }
+  }
+
+  // Fallback to smart algorithm
+  return generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config);
+}
+
+// OpenAI question generation
+async function generateQuestionsWithOpenAI(resumeData, jobDescriptionData, config) {
+  const prompt = `You are an expert technical interviewer. Generate 5 interview questions based on the following:
+
+Resume Skills: ${resumeData?.skills?.join(', ') || 'JavaScript, React, Node.js'}
+Job Requirements: ${jobDescriptionData?.required_skills?.join(', ') || 'Full Stack Development'}
+Role: ${jobDescriptionData?.role || 'Software Developer'}
+Difficulty: ${config?.initialDifficulty || 'Medium'}
+
+Generate a mix of:
+- 2 technical questions (coding concepts, algorithms)
+- 2 conceptual questions (system design, best practices)
+- 1 behavioral question (teamwork, problem-solving)
+
+Return ONLY a JSON array with this exact format:
+[
+  {
+    "id": "q1",
+    "type": "technical",
+    "difficulty": "medium",
+    "question": "Question text here",
+    "time_limit": 300
+  }
+]`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'You are an expert technical interviewer. Always respond with valid JSON only.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    max_tokens: 1500,
+  });
+
+  const content = completion.choices[0].message.content.trim();
+  
+  let jsonStr = content;
+  if (content.includes('```json')) {
+    jsonStr = content.split('```json')[1].split('```')[0].trim();
+  } else if (content.includes('```')) {
+    jsonStr = content.split('```')[1].split('```')[0].trim();
+  }
+
+  return JSON.parse(jsonStr);
+}
+
+// Algorithm-based question generation (fallback)
+function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) {
   const questions = [];
   const skills = resumeData?.skills || [];
   const requiredSkills = jobDescriptionData?.required_skills || [];
@@ -246,12 +317,72 @@ function generateSmartQuestions(resumeData, jobDescriptionData, config) {
     });
   }
 
-  console.log(`✅ Generated ${questions.length} personalized questions for skills: ${Array.from(skillAreas).join(', ')}`);
+  console.log(`✅ Generated ${questions.length} personalized questions using smart algorithm for skills: ${Array.from(skillAreas).join(', ')}`);
   return questions;
 }
 
 // Intelligent answer evaluation
-function evaluateAnswerSmart(question, answer) {
+async function evaluateAnswerSmart(question, answer) {
+  // Try OpenAI first if available
+  if (openai) {
+    try {
+      console.log('🤖 Attempting to evaluate with OpenAI...');
+      const evaluation = await evaluateWithOpenAI(question, answer);
+      console.log(`✅ OpenAI evaluation: Score ${evaluation.score}/100`);
+      return evaluation;
+    } catch (error) {
+      console.log(`⚠️  OpenAI evaluation failed (${error.message}), using smart algorithm`);
+    }
+  }
+
+  // Fallback to smart algorithm
+  return evaluateWithAlgorithm(question, answer);
+}
+
+// OpenAI evaluation
+async function evaluateWithOpenAI(question, answer) {
+  const prompt = `You are an expert technical interviewer evaluating a candidate's answer.
+
+Question: ${question.question}
+Question Type: ${question.type}
+Difficulty: ${question.difficulty}
+
+Candidate's Answer: ${answer}
+
+Evaluate the answer and provide:
+1. A score from 0-100
+2. Brief feedback (2-3 sentences)
+
+Return ONLY a JSON object with this exact format:
+{
+  "score": 85,
+  "feedback": "Your feedback here"
+}`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'You are an expert technical interviewer. Always respond with valid JSON only.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 300,
+  });
+
+  const content = completion.choices[0].message.content.trim();
+  
+  let jsonStr = content;
+  if (content.includes('```json')) {
+    jsonStr = content.split('```json')[1].split('```')[0].trim();
+  } else if (content.includes('```')) {
+    jsonStr = content.split('```')[1].split('```')[0].trim();
+  }
+
+  return JSON.parse(jsonStr);
+}
+
+// Algorithm-based evaluation (fallback)
+function evaluateWithAlgorithm(question, answer) {
   const answerLower = answer.toLowerCase().trim();
   const words = answerLower.split(/\s+/).filter(w => w.length > 0);
   const wordCount = words.length;
@@ -314,6 +445,7 @@ function evaluateAnswerSmart(question, answer) {
     score = Math.min(100, score + 5);
   }
 
+  console.log(`✅ Algorithm evaluation: Score ${score}/100`);
   return { score, feedback };
 }
 
@@ -451,7 +583,7 @@ app.post('/api/sessions/create', async (req, res) => {
 
     console.log(`🧠 Generating smart questions for session: ${sessionId}`);
 
-    const questions = generateSmartQuestions(resumeData, jobDescriptionData, config);
+    const questions = await generateSmartQuestions(resumeData, jobDescriptionData, config);
 
     const session = {
       id: sessionId,
@@ -612,7 +744,7 @@ io.on('connection', (socket) => {
     if (session) {
       const currentQuestion = session.questions[session.current_question_index];
 
-      const evaluation = evaluateAnswerSmart(currentQuestion, response.content);
+      const evaluation = await evaluateAnswerSmart(currentQuestion, response.content);
 
       if (!session.responses) session.responses = [];
       session.responses.push({
@@ -678,14 +810,19 @@ app.use((err, req, res, next) => {
 });
 
 server.listen(PORT, () => {
-  console.log('\n🚀 Smart AI Backend Server Started');
+  console.log('\n🚀 Hybrid AI Backend Server Started');
   console.log(`📍 Server running at: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-  console.log(`🧠 Intelligent Features: ENABLED`);
+  console.log(`🤖 OpenAI Integration: ${openai ? '✅ ENABLED (will try first)' : '❌ DISABLED'}`);
+  console.log(`🧠 Smart Algorithm: ✅ ENABLED (fallback)`);
   console.log(`🔌 WebSocket support: ENABLED`);
   console.log('\n✨ Features:');
+  console.log('   - Tries OpenAI GPT-3.5-turbo first');
+  console.log('   - Falls back to smart algorithm if OpenAI fails');
   console.log('   - Smart question generation based on resume/JD');
   console.log('   - Intelligent answer evaluation');
-  console.log('   - Personalized feedback');
-  console.log('   - No OpenAI credits required\n');
+  console.log('   - Personalized feedback\n');
+  if (openai) {
+    console.log('💡 Note: If OpenAI fails due to quota, smart algorithm will be used automatically\n');
+  }
 });

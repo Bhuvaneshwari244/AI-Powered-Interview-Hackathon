@@ -70,7 +70,7 @@ export default function PerformancePage() {
                         )}
                       </div>
                       <div className="text-sm text-gray-600">
-                        Started: {new Date(session.started_at).toLocaleString()}
+                        Started: {session.created_at ? new Date(session.created_at).toLocaleString() : 'Invalid Date'}
                       </div>
                       {session.completed_at && (
                         <div className="text-sm text-gray-600">
