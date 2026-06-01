@@ -273,6 +273,74 @@ app.post('/api/sessions/:sessionId/submit-response', (req, res) => {
   });
 });
 
+app.get('/api/sessions/:sessionId/report', (req, res) => {
+  const session = sessions.get(req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: { message: 'Session not found' } });
+  }
+  
+  // Generate mock report
+  const overallScore = Math.floor(Math.random() * 30) + 70;
+  
+  res.json({
+    report: {
+      sessionId: req.params.sessionId,
+      overallScore: overallScore,
+      readinessLevel: overallScore >= 80 ? 'Ready' : overallScore >= 60 ? 'Needs Improvement' : 'Not Ready',
+      skillAreaBreakdown: [
+        {
+          skillArea: 'JavaScript',
+          score: Math.floor(Math.random() * 30) + 70,
+          questionsAsked: 1,
+          averageTimeSpent: 180,
+        },
+        {
+          skillArea: 'Node.js',
+          score: Math.floor(Math.random() * 30) + 70,
+          questionsAsked: 1,
+          averageTimeSpent: 200,
+        },
+        {
+          skillArea: 'Communication',
+          score: Math.floor(Math.random() * 30) + 70,
+          questionsAsked: 1,
+          averageTimeSpent: 150,
+        },
+      ],
+      strengths: [
+        {
+          area: 'Technical Knowledge',
+          description: 'Demonstrated good understanding of core concepts',
+          evidence: ['Clear explanations', 'Used proper terminology'],
+        },
+      ],
+      weaknesses: [
+        {
+          area: 'Answer Depth',
+          description: 'Answers could be more detailed with examples',
+          impact: 'Medium',
+          recommendations: [
+            'Provide specific examples from your experience',
+            'Explain the reasoning behind your answers',
+          ],
+        },
+      ],
+      timeManagement: {
+        totalTime: 530,
+        averageTimePerQuestion: 177,
+        questionsOverTime: 0,
+        timeEfficiencyScore: 85,
+      },
+      recommendations: [
+        {
+          area: 'Interview Preparation',
+          suggestion: 'Practice explaining technical concepts with real-world examples',
+        },
+      ],
+    },
+  });
+});
+
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
