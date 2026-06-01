@@ -42,8 +42,8 @@ An intelligent mock interview platform that simulates realistic technical interv
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd ai-mock-interview-platform
+git clone https://github.com/Bhuvaneshwari244/AI-Powered-Interview-Hackathon.git
+cd AI-Powered-Interview-Hackathon
 ```
 
 2. Install dependencies:
