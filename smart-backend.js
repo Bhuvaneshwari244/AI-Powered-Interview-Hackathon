@@ -431,18 +431,51 @@ function evaluateWithAlgorithm(question, answer) {
   let score = 0;
   let feedback = '';
 
-  // Check if answer is too short
-  if (wordCount < 5) {
-    score = Math.min(30, wordCount * 6);
-    feedback = "Your answer is too brief. Please provide more detailed explanations with examples and reasoning.";
+  // Check if answer is extremely short or just random characters
+  if (charCount < 3) {
+    score = 0;
+    feedback = "No meaningful answer provided. Please provide a proper explanation.";
     return { score, feedback };
   }
 
-  // Check for gibberish or random characters
-  const hasProperWords = words.filter(w => w.length >= 3).length / words.length > 0.7;
-  if (!hasProperWords) {
-    score = 20;
-    feedback = "Your answer doesn't seem to address the question properly. Please provide a clear, structured response.";
+  // Check if answer is just 1-2 words or very short
+  if (wordCount <= 2 || charCount < 10) {
+    score = Math.min(5, charCount);
+    feedback = "Your answer is far too brief. Please provide a detailed explanation with examples and reasoning.";
+    return { score, feedback };
+  }
+
+  // Check for gibberish or random characters (less than 3 words)
+  if (wordCount < 3) {
+    score = 8;
+    feedback = "Your answer doesn't seem meaningful. Please provide a clear, structured response with proper explanations.";
+    return { score, feedback };
+  }
+
+  // Check if most words are too short (likely gibberish)
+  const properWords = words.filter(w => w.length >= 3);
+  const properWordRatio = properWords.length / words.length;
+  
+  if (properWordRatio < 0.5) {
+    score = 10;
+    feedback = "Your answer contains mostly random characters. Please provide a meaningful, well-structured response.";
+    return { score, feedback };
+  }
+
+  // Check if answer has common English words (basic validation)
+  const commonWords = ['the', 'is', 'are', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'a', 'an'];
+  const hasCommonWords = commonWords.some(word => answerLower.includes(word));
+  
+  if (!hasCommonWords && wordCount < 10) {
+    score = 15;
+    feedback = "Your answer doesn't appear to be a proper explanation. Please write in complete sentences.";
+    return { score, feedback };
+  }
+
+  // Check if answer is too short (less than 5 words)
+  if (wordCount < 5) {
+    score = Math.min(20, wordCount * 4);
+    feedback = "Your answer is too brief. Please provide more detailed explanations with examples and reasoning.";
     return { score, feedback };
   }
 
@@ -456,21 +489,27 @@ function evaluateWithAlgorithm(question, answer) {
   } else if (wordCount >= 15) {
     score = 65;
     feedback = "Decent answer, but could be more detailed. Try to explain your reasoning and provide examples.";
-  } else {
+  } else if (wordCount >= 10) {
     score = 50;
     feedback = "Your answer is somewhat brief. Expand on your points with more details and examples.";
+  } else {
+    score = 35;
+    feedback = "Your answer needs more detail. Provide comprehensive explanations with examples.";
   }
 
   // Bonus points for technical terms (for technical questions)
   if (question.type === 'technical') {
     const technicalTerms = ['function', 'variable', 'async', 'promise', 'callback', 'api', 'database', 
                            'component', 'state', 'props', 'hook', 'event', 'loop', 'closure', 'scope',
-                           'prototype', 'class', 'object', 'array', 'string', 'number', 'boolean'];
+                           'prototype', 'class', 'object', 'array', 'string', 'number', 'boolean',
+                           'stack', 'queue', 'heap', 'thread', 'process', 'memory', 'algorithm'];
     
     const termsFound = technicalTerms.filter(term => answerLower.includes(term)).length;
     if (termsFound >= 3) {
       score = Math.min(100, score + 10);
       feedback = "Great! You used relevant technical terminology and provided a detailed explanation.";
+    } else if (termsFound >= 1) {
+      score = Math.min(100, score + 5);
     }
   }
 
@@ -484,7 +523,7 @@ function evaluateWithAlgorithm(question, answer) {
     score = Math.min(100, score + 5);
   }
 
-  console.log(`✅ Algorithm evaluation: Score ${score}/100`);
+  console.log(`✅ Algorithm evaluation: Score ${score}/100 (${wordCount} words, ${charCount} chars)`);
   return { score, feedback };
 }
 
