@@ -31,65 +31,93 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <div>
-          <h2 className="text-3xl font-bold text-center">Welcome Back</h2>
-          <p className="mt-2 text-center text-gray-600">
-            Login to continue your interview practice
-          </p>
+    <div className="min-h-screen bg-gradient-animated flex items-center justify-center p-6">
+      <div className="max-w-md w-full">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="inline-block p-4 bg-white/20 backdrop-blur-sm rounded-2xl mb-4">
+            <span className="text-5xl">🎯</span>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back!</h1>
+          <p className="text-white/80">Login to continue your interview practice</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded">{error}</div>
-          )}
+        {/* Login Form */}
+        <div className="card-glass p-8 animate-scale-in">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded animate-fade-in">
+                <div className="flex items-center">
+                  <span className="text-xl mr-2">⚠️</span>
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                  📧 Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  className="input-modern w-full"
+                  placeholder="your.email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+                  🔒 Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  className="input-modern w-full"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <span className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></span>
+                  Logging in...
+                </span>
+              ) : (
+                '🚀 Login'
+              )}
+            </button>
+
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <a href="/auth/register" className="font-semibold text-purple-600 hover:text-purple-700 transition">
+                  Register Now →
+                </a>
+              </p>
             </div>
-          </div>
+          </form>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-
-          <p className="text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <a href="/auth/register" className="text-primary-600 hover:text-primary-700">
-              Register
-            </a>
+        {/* Footer */}
+        <div className="text-center mt-6 animate-fade-in">
+          <p className="text-white/70 text-sm">
+            🔐 Secure Login • 🆓 100% Free • 🤖 AI-Powered
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );

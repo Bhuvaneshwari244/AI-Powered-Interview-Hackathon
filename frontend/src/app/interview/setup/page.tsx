@@ -73,117 +73,184 @@ export default function InterviewSetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-animated py-8">
       <div className="max-w-3xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow p-8">
-          <h1 className="text-3xl font-bold mb-6">Interview Setup</h1>
+        <div className="card-glass p-8 animate-scale-in">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-block p-3 bg-gradient-primary rounded-full mb-4">
+              <span className="text-4xl">⚙️</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Interview Setup</h1>
+            <p className="text-gray-600">Configure your AI-powered mock interview</p>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className={`text-sm font-semibold ${step >= 1 ? 'text-purple-600' : 'text-gray-400'}`}>
+                📄 Resume
+              </span>
+              <span className={`text-sm font-semibold ${step >= 2 ? 'text-purple-600' : 'text-gray-400'}`}>
+                💼 Job Description
+              </span>
+              <span className={`text-sm font-semibold ${step >= 3 ? 'text-purple-600' : 'text-gray-400'}`}>
+                ⚙️ Configure
+              </span>
+            </div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{width: `${(step / 3) * 100}%`}}
+              ></div>
+            </div>
+          </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded mb-4">{error}</div>
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6 animate-fade-in">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">⚠️</span>
+                <span>{error}</span>
+              </div>
+            </div>
           )}
 
           {step === 1 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Step 1: Upload Resume</h2>
-              <input
-                type="file"
-                accept=".pdf,.docx,.doc"
-                onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                className="mb-4"
-              />
+            <div className="animate-fade-in">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">📄 Step 1: Upload Resume</h2>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-500 transition">
+                <div className="text-5xl mb-4">📎</div>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc"
+                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                  className="mb-4"
+                  id="resume-upload"
+                />
+                <label htmlFor="resume-upload" className="cursor-pointer">
+                  <p className="text-gray-600 mb-2">
+                    {resumeFile ? `Selected: ${resumeFile.name}` : 'Click to upload your resume'}
+                  </p>
+                  <p className="text-sm text-gray-500">Supports PDF, DOCX, DOC</p>
+                </label>
+              </div>
               <button
                 onClick={handleResumeUpload}
                 disabled={!resumeFile || loading}
-                className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                className="btn btn-primary w-full mt-6 text-lg disabled:opacity-50"
               >
-                {loading ? 'Parsing...' : 'Continue'}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <span className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></span>
+                    Parsing Resume...
+                  </span>
+                ) : (
+                  '➡️ Continue'
+                )}
               </button>
             </div>
           )}
 
           {step === 2 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Step 2: Job Description</h2>
+            <div className="animate-fade-in">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">💼 Step 2: Job Description</h2>
               <textarea
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
-                placeholder="Paste the job description here..."
-                className="w-full h-64 p-3 border border-gray-300 rounded-md mb-4"
+                placeholder="Paste the job description here...&#10;&#10;Example:&#10;We are looking for a Full Stack Developer with experience in React, Node.js, and PostgreSQL..."
+                className="input-modern w-full h-64 resize-none"
               />
               <button
                 onClick={handleJDSubmit}
                 disabled={!jdText || loading}
-                className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                className="btn btn-primary w-full mt-6 text-lg disabled:opacity-50"
               >
-                {loading ? 'Parsing...' : 'Continue'}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <span className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></span>
+                    Parsing Job Description...
+                  </span>
+                ) : (
+                  '➡️ Continue'
+                )}
               </button>
             </div>
           )}
 
           {step === 3 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Step 3: Configure Interview</h2>
+            <div className="animate-fade-in">
+              <h2 className="text-xl font-semibold mb-6 text-gray-800">⚙️ Step 3: Configure Interview</h2>
               
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Time Per Question
+              <div className="space-y-6 mb-8">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg">
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    ⏱️ Time Per Question
                   </label>
                   <select
                     value={config.timePerQuestion}
                     onChange={(e) => setConfig({ ...config, timePerQuestion: Number(e.target.value) as any })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="input-modern w-full text-lg"
                   >
-                    <option value={180}>3 minutes per question</option>
-                    <option value={300}>5 minutes per question</option>
-                    <option value={420}>7 minutes per question</option>
-                    <option value={600}>10 minutes per question</option>
+                    <option value={180}>⚡ 3 minutes per question (Fast)</option>
+                    <option value={300}>⏱️ 5 minutes per question (Standard)</option>
+                    <option value={420}>🕐 7 minutes per question (Comfortable)</option>
+                    <option value={600}>🕑 10 minutes per question (Detailed)</option>
                   </select>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Choose how much time you want for each question
+                  <p className="text-sm text-gray-600 mt-2">
+                    💡 Choose how much time you want for each question
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Duration
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg">
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    📅 Total Duration
                   </label>
                   <select
                     value={config.duration}
                     onChange={(e) => setConfig({ ...config, duration: Number(e.target.value) as any })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="input-modern w-full text-lg"
                   >
                     <option value={30}>30 minutes</option>
                     <option value={45}>45 minutes</option>
                     <option value={60}>60 minutes</option>
                   </select>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Total interview duration (affects number of questions)
+                  <p className="text-sm text-gray-600 mt-2">
+                    💡 Total interview duration (affects number of questions)
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Initial Difficulty
+                <div className="bg-gradient-to-r from-green-50 to-yellow-50 p-6 rounded-lg">
+                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                    🎯 Initial Difficulty
                   </label>
                   <select
                     value={config.initialDifficulty}
                     onChange={(e) => setConfig({ ...config, initialDifficulty: e.target.value as any })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="input-modern w-full text-lg"
                   >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
+                    <option value="Easy">😊 Easy</option>
+                    <option value="Medium">😐 Medium</option>
+                    <option value="Hard">😤 Hard</option>
                   </select>
+                  <p className="text-sm text-gray-600 mt-2">
+                    💡 Starting difficulty level for questions
+                  </p>
                 </div>
               </div>
 
               <button
                 onClick={handleStartInterview}
                 disabled={loading}
-                className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                className="btn btn-success w-full text-xl py-4 disabled:opacity-50"
               >
-                {loading ? 'Starting...' : 'Start Interview'}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <span className="spinner mr-2" style={{width: '24px', height: '24px', borderWidth: '3px'}}></span>
+                    Starting Interview...
+                  </span>
+                ) : (
+                  '🚀 Start Interview'
+                )}
               </button>
             </div>
           )}

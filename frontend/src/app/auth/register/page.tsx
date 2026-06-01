@@ -7,9 +7,10 @@ import { authAPI } from '@/lib/api';
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    email: '',
     name: '',
+    email: '',
     password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,10 +18,25 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await authAPI.register(formData);
+      const response = await authAPI.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('candidate', JSON.stringify(response.data.candidate));
       router.push('/dashboard');
@@ -32,80 +48,124 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <div>
-          <h2 className="text-3xl font-bold text-center">Create Account</h2>
-          <p className="mt-2 text-center text-gray-600">
-            Start practicing for your interviews
-          </p>
+    <div className="min-h-screen bg-gradient-animated flex items-center justify-center p-6">
+      <div className="max-w-md w-full">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="inline-block p-4 bg-white/20 backdrop-blur-sm rounded-2xl mb-4">
+            <span className="text-5xl">🎯</span>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
+          <p className="text-white/80">Start your AI-powered interview practice journey</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded">{error}</div>
-          )}
+        {/* Register Form */}
+        <div className="card-glass p-8 animate-scale-in">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded animate-fade-in">
+                <div className="flex items-center">
+                  <span className="text-xl mr-2">⚠️</span>
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                  👤 Full Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  required
+                  className="input-modern w-full"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                  📧 Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  className="input-modern w-full"
+                  placeholder="your.email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+                  🔒 Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  className="input-modern w-full"
+                  placeholder="At least 8 characters"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters long</p>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+                  🔒 Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  className="input-modern w-full"
+                  placeholder="Re-enter your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <span className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></span>
+                  Creating Account...
+                </span>
+              ) : (
+                '🚀 Create Account'
+              )}
+            </button>
+
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <a href="/auth/login" className="font-semibold text-purple-600 hover:text-purple-700 transition">
+                  Login →
+                </a>
+              </p>
             </div>
+          </form>
+        </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
-          >
-            {loading ? 'Creating account...' : 'Register'}
-          </button>
-
-          <p className="text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <a href="/auth/login" className="text-primary-600 hover:text-primary-700">
-              Login
-            </a>
+        {/* Footer */}
+        <div className="text-center mt-6 animate-fade-in">
+          <p className="text-white/70 text-sm">
+            🔐 Secure Registration • 🆓 100% Free • 🤖 AI-Powered
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );
