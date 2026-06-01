@@ -318,6 +318,7 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
   const skills = resumeData?.skills || [];
   const requiredSkills = jobDescriptionData?.required_skills || [];
   const difficulty = (config?.initialDifficulty || 'Medium').toLowerCase();
+  const timePerQuestion = config?.timePerQuestion || 300; // Use user-selected time or default 5 min
   
   // Determine relevant skill areas
   const skillAreas = new Set();
@@ -349,7 +350,7 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
         type: 'technical',
         difficulty: difficulty,
         question: randomQuestion,
-        time_limit: 300,
+        time_limit: timePerQuestion, // Use user-selected time
         skill_area: skillArea
       });
     }
@@ -363,7 +364,7 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
       type: 'conceptual',
       difficulty: difficulty,
       question: systemQuestions[Math.floor(Math.random() * systemQuestions.length)],
-      time_limit: 300,
+      time_limit: timePerQuestion, // Use user-selected time
       skill_area: 'system-design'
     });
   }
@@ -375,7 +376,7 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
     type: 'behavioral',
     difficulty: 'easy',
     question: behavioralQuestions[Math.floor(Math.random() * behavioralQuestions.length)],
-    time_limit: 300,
+    time_limit: timePerQuestion, // Use user-selected time
     skill_area: 'behavioral'
   });
 
@@ -390,12 +391,12 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
       type: 'technical',
       difficulty: difficulty,
       question: randomQuestion,
-      time_limit: 300,
+      time_limit: timePerQuestion, // Use user-selected time
       skill_area: skillArea
     });
   }
 
-  console.log(`✅ Generated ${questions.length} personalized questions using smart algorithm for skills: ${Array.from(skillAreas).join(', ')}`);
+  console.log(`✅ Generated ${questions.length} personalized questions (${timePerQuestion}s each) using smart algorithm for skills: ${Array.from(skillAreas).join(', ')}`);
   return questions;
 }
 
@@ -505,6 +506,14 @@ function evaluateWithAlgorithm(question, answer) {
   let score = 0;
   let feedback = '';
 
+  // Check for "I don't know" or similar non-answers
+  const nonAnswers = ["i don't know", "idk", "i dont know", "don't know", "dont know", "no idea", "not sure"];
+  if (nonAnswers.some(na => answerLower.includes(na)) && wordCount <= 5) {
+    score = 0;
+    feedback = "You didn't attempt to answer the question. Even a partial answer is better than 'I don't know'. Try to explain what you do know about the topic.";
+    return { score, feedback };
+  }
+
   // Check if answer is extremely short or just random characters
   if (charCount < 3) {
     score = 0;
@@ -514,14 +523,14 @@ function evaluateWithAlgorithm(question, answer) {
 
   // Check if answer is just 1-2 words or very short
   if (wordCount <= 2 || charCount < 10) {
-    score = Math.min(5, charCount);
+    score = 0;
     feedback = "Your answer is far too brief. Please provide a detailed explanation with examples and reasoning.";
     return { score, feedback };
   }
 
   // Check for gibberish or random characters (less than 3 words)
   if (wordCount < 3) {
-    score = 8;
+    score = 0;
     feedback = "Your answer doesn't seem meaningful. Please provide a clear, structured response with proper explanations.";
     return { score, feedback };
   }
@@ -531,24 +540,24 @@ function evaluateWithAlgorithm(question, answer) {
   const properWordRatio = properWords.length / words.length;
   
   if (properWordRatio < 0.5) {
-    score = 10;
+    score = 5;
     feedback = "Your answer contains mostly random characters. Please provide a meaningful, well-structured response.";
     return { score, feedback };
   }
 
   // Check if answer has common English words (basic validation)
-  const commonWords = ['the', 'is', 'are', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'a', 'an'];
+  const commonWords = ['the', 'is', 'are', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'a', 'an', 'it', 'this', 'that'];
   const hasCommonWords = commonWords.some(word => answerLower.includes(word));
   
   if (!hasCommonWords && wordCount < 10) {
-    score = 15;
+    score = 10;
     feedback = "Your answer doesn't appear to be a proper explanation. Please write in complete sentences.";
     return { score, feedback };
   }
 
   // Check if answer is too short (less than 5 words)
   if (wordCount < 5) {
-    score = Math.min(20, wordCount * 4);
+    score = 15;
     feedback = "Your answer is too brief. Please provide more detailed explanations with examples and reasoning.";
     return { score, feedback };
   }
@@ -567,7 +576,7 @@ function evaluateWithAlgorithm(question, answer) {
     score = 50;
     feedback = "Your answer is somewhat brief. Expand on your points with more details and examples.";
   } else {
-    score = 35;
+    score = 30;
     feedback = "Your answer needs more detail. Provide comprehensive explanations with examples.";
   }
 

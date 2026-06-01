@@ -12,6 +12,7 @@ export default function InterviewSetupPage() {
   const [config, setConfig] = useState({
     duration: 45 as 30 | 45 | 60,
     initialDifficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard',
+    timePerQuestion: 300 as 180 | 300 | 420 | 600, // 3, 5, 7, or 10 minutes in seconds
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,6 +127,25 @@ export default function InterviewSetupPage() {
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Time Per Question
+                  </label>
+                  <select
+                    value={config.timePerQuestion}
+                    onChange={(e) => setConfig({ ...config, timePerQuestion: Number(e.target.value) as any })}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value={180}>3 minutes per question</option>
+                    <option value={300}>5 minutes per question</option>
+                    <option value={420}>7 minutes per question</option>
+                    <option value={600}>10 minutes per question</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Choose how much time you want for each question
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Duration
                   </label>
                   <select
@@ -137,6 +157,9 @@ export default function InterviewSetupPage() {
                     <option value={45}>45 minutes</option>
                     <option value={60}>60 minutes</option>
                   </select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Total interview duration (affects number of questions)
+                  </p>
                 </div>
 
                 <div>
