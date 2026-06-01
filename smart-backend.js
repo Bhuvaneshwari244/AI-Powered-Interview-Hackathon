@@ -9,7 +9,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
 
@@ -25,10 +25,9 @@ const io = new Server(server, {
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'temporary-mock-secret-key-for-testing';
 
-// Initialize OpenAI (will try to use it first)
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-}) : null;
+// Initialize Google Gemini (FREE API!)
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }) : null;
 
 // Persistent storage file paths
 const DATA_DIR = path.join(__dirname, 'data');
@@ -210,15 +209,15 @@ const questionBank = {
 
 // Intelligent question generation based on resume and JD
 async function generateSmartQuestions(resumeData, jobDescriptionData, config) {
-  // Try OpenAI first if available
-  if (openai) {
+  // Try Gemini first if available
+  if (geminiModel) {
     try {
-      console.log('🤖 Attempting to use OpenAI GPT-3.5-turbo...');
-      const questions = await generateQuestionsWithOpenAI(resumeData, jobDescriptionData, config);
-      console.log('✅ Successfully generated questions using OpenAI');
+      console.log('🤖 Attempting to use Google Gemini 1.5 Flash (FREE)...');
+      const questions = await generateQuestionsWithGemini(resumeData, jobDescriptionData, config);
+      console.log('✅ Successfully generated questions using Google Gemini');
       return questions;
     } catch (error) {
-      console.log(`⚠️  OpenAI failed (${error.message}), falling back to smart algorithm`);
+      console.log(`⚠️  Gemini failed (${error.message}), falling back to smart algorithm`);
     }
   }
 
@@ -226,7 +225,47 @@ async function generateSmartQuestions(resumeData, jobDescriptionData, config) {
   return generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config);
 }
 
-// OpenAI question generation
+// Google Gemini question generation (FREE!)
+async function generateQuestionsWithGemini(resumeData, jobDescriptionData, config) {
+  const prompt = `You are an expert technical interviewer. Generate 5 interview questions based on the following:
+
+Resume Skills: ${resumeData?.skills?.join(', ') || 'JavaScript, React, Node.js'}
+Job Requirements: ${jobDescriptionData?.required_skills?.join(', ') || 'Full Stack Development'}
+Role: ${jobDescriptionData?.role || 'Software Developer'}
+Difficulty: ${config?.initialDifficulty || 'Medium'}
+
+Generate a mix of:
+- 2 technical questions (coding concepts, algorithms)
+- 2 conceptual questions (system design, best practices)
+- 1 behavioral question (teamwork, problem-solving)
+
+Return ONLY a JSON array with this exact format (no markdown, no explanation):
+[
+  {
+    "id": "q1",
+    "type": "technical",
+    "difficulty": "medium",
+    "question": "Question text here",
+    "time_limit": 300
+  }
+]`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+  
+  // Clean up the response
+  let jsonStr = text.trim();
+  if (jsonStr.includes('```json')) {
+    jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
+  } else if (jsonStr.includes('```')) {
+    jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
+  }
+
+  return JSON.parse(jsonStr);
+}
+
+// OpenAI question generation (kept for reference, but using Gemini now)
 async function generateQuestionsWithOpenAI(resumeData, jobDescriptionData, config) {
   const prompt = `You are an expert technical interviewer. Generate 5 interview questions based on the following:
 
@@ -362,15 +401,15 @@ function generateQuestionsWithAlgorithm(resumeData, jobDescriptionData, config) 
 
 // Intelligent answer evaluation
 async function evaluateAnswerSmart(question, answer) {
-  // Try OpenAI first if available
-  if (openai) {
+  // Try Gemini first if available
+  if (geminiModel) {
     try {
-      console.log('🤖 Attempting to evaluate with OpenAI...');
-      const evaluation = await evaluateWithOpenAI(question, answer);
-      console.log(`✅ OpenAI evaluation: Score ${evaluation.score}/100`);
+      console.log('🤖 Attempting to evaluate with Google Gemini...');
+      const evaluation = await evaluateWithGemini(question, answer);
+      console.log(`✅ Gemini evaluation: Score ${evaluation.score}/100`);
       return evaluation;
     } catch (error) {
-      console.log(`⚠️  OpenAI evaluation failed (${error.message}), using smart algorithm`);
+      console.log(`⚠️  Gemini evaluation failed (${error.message}), using smart algorithm`);
     }
   }
 
@@ -378,7 +417,42 @@ async function evaluateAnswerSmart(question, answer) {
   return evaluateWithAlgorithm(question, answer);
 }
 
-// OpenAI evaluation
+// Google Gemini evaluation (FREE!)
+async function evaluateWithGemini(question, answer) {
+  const prompt = `You are an expert technical interviewer evaluating a candidate's answer.
+
+Question: ${question.question}
+Question Type: ${question.type}
+Difficulty: ${question.difficulty}
+
+Candidate's Answer: ${answer}
+
+Evaluate the answer and provide:
+1. A score from 0-100 (be strict: gibberish = 0-10, brief = 20-40, good = 60-80, excellent = 80-100)
+2. Brief feedback (2-3 sentences)
+
+Return ONLY a JSON object with this exact format (no markdown, no explanation):
+{
+  "score": 85,
+  "feedback": "Your feedback here"
+}`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+  
+  // Clean up the response
+  let jsonStr = text.trim();
+  if (jsonStr.includes('```json')) {
+    jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
+  } else if (jsonStr.includes('```')) {
+    jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
+  }
+
+  return JSON.parse(jsonStr);
+}
+
+// OpenAI evaluation (kept for reference, but using Gemini now)
 async function evaluateWithOpenAI(question, answer) {
   const prompt = `You are an expert technical interviewer evaluating a candidate's answer.
 
@@ -916,18 +990,20 @@ server.listen(PORT, () => {
   console.log('\n🚀 Hybrid AI Backend Server Started');
   console.log(`📍 Server running at: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-  console.log(`🤖 OpenAI Integration: ${openai ? '✅ ENABLED (will try first)' : '❌ DISABLED'}`);
+  console.log(`🤖 Google Gemini 1.5 Flash: ${geminiModel ? '✅ ENABLED (FREE, will try first)' : '❌ DISABLED'}`);
   console.log(`🧠 Smart Algorithm: ✅ ENABLED (fallback)`);
   console.log(`💾 Persistent Storage: ✅ ENABLED (data saved to disk)`);
   console.log(`🔌 WebSocket support: ENABLED`);
   console.log('\n✨ Features:');
-  console.log('   - Tries OpenAI GPT-3.5-turbo first');
-  console.log('   - Falls back to smart algorithm if OpenAI fails');
+  console.log('   - Uses Google Gemini 1.5 Flash (FREE API!)');
+  console.log('   - Falls back to smart algorithm if Gemini fails');
   console.log('   - Smart question generation based on resume/JD');
   console.log('   - Intelligent answer evaluation');
   console.log('   - Personalized feedback');
   console.log('   - Data persists across server restarts\n');
-  if (openai) {
-    console.log('💡 Note: If OpenAI fails due to quota, smart algorithm will be used automatically\n');
+  if (!geminiModel) {
+    console.log('💡 To enable FREE Google Gemini AI:');
+    console.log('   1. Get free API key: https://makersuite.google.com/app/apikey');
+    console.log('   2. Add to .env: GEMINI_API_KEY=your_key_here\n');
   }
 });
