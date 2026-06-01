@@ -17,6 +17,7 @@ export default function InterviewSessionPage() {
   const [questionNumber, setQuestionNumber] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(3);
   const [connected, setConnected] = useState(false);
+  const [submittedAnswer, setSubmittedAnswer] = useState('');
 
   useEffect(() => {
     if (!sessionId || sessionId === 'undefined') {
@@ -57,6 +58,7 @@ export default function InterviewSessionPage() {
     socket.on('evaluation.complete', (data: any) => {
       console.log('Evaluation received:', data);
       setEvaluation(data);
+      setSubmittedAnswer(response);
       setLoading(false);
     });
 
@@ -204,6 +206,15 @@ export default function InterviewSessionPage() {
             </div>
           ) : (
             <div className="space-y-6 animate-fade-in">
+              {/* Question & Answer Review */}
+              <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
+                <h4 className="font-semibold text-lg text-gray-800 mb-3">Question</h4>
+                <p className="text-gray-700 mb-4">{evaluation.question || question.question}</p>
+                
+                <h4 className="font-semibold text-lg text-gray-800 mb-3">Your Answer</h4>
+                <p className="text-gray-700 whitespace-pre-wrap">{evaluation.your_answer || submittedAnswer}</p>
+              </div>
+
               {/* Score Card */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-200">
                 <div className="flex items-center justify-between">
@@ -231,7 +242,7 @@ export default function InterviewSessionPage() {
                 <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-100 to-indigo-100 px-6 py-4 rounded-full">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   <span className="text-gray-700 font-medium">
-                    {questionNumber < totalQuestions ? 'Preparing next question...' : 'Completing interview...'}
+                    {questionNumber < totalQuestions ? 'Next question in 5 seconds...' : 'Completing interview...'}
                   </span>
                 </div>
               </div>

@@ -237,7 +237,7 @@ Return ONLY a JSON array with this exact format:
 ]`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: 'You are an expert technical interviewer. Always respond with valid JSON only.' },
         { role: 'user', content: prompt }
@@ -257,7 +257,7 @@ Return ONLY a JSON array with this exact format:
     }
 
     const questions = JSON.parse(jsonStr);
-    console.log(`✅ Generated ${questions.length} questions using GPT-4`);
+    console.log(`✅ Generated ${questions.length} questions using GPT-3.5-turbo`);
     return questions;
 
   } catch (error) {
@@ -311,7 +311,7 @@ Return ONLY a JSON object with this exact format:
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: 'You are an expert technical interviewer. Always respond with valid JSON only.' },
         { role: 'user', content: prompt }
@@ -425,6 +425,21 @@ app.get('/api/sessions/:sessionId/report', (req, res) => {
   });
 });
 
+// Get all sessions for a candidate
+app.get('/api/candidates/:candidateId/sessions', (req, res) => {
+  const candidateSessions = Array.from(sessions.values())
+    .filter(s => s.status === 'active' || s.status === 'completed')
+    .map(s => ({
+      id: s.id,
+      created_at: s.created_at,
+      status: s.status,
+      questions_count: s.questions?.length || 0,
+      responses_count: s.responses?.length || 0,
+    }));
+
+  res.json({ sessions: candidateSessions });
+});
+
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
@@ -473,29 +488,36 @@ io.on('connection', (socket) => {
         question: currentQuestion,
         answer: response.content,
         evaluation: evaluation,
+        timestamp: new Date().toISOString(),
       });
 
-      socket.emit('evaluation.complete', evaluation);
+      socket.emit('evaluation.complete', {
+        ...evaluation,
+        question: currentQuestion.question,
+        your_answer: response.content,
+      });
 
       // Move to next question
       session.current_question_index++;
 
       if (session.current_question_index < session.questions.length) {
         const nextQuestion = session.questions[session.current_question_index];
+        // Wait 5 seconds before showing next question (time to read feedback)
         setTimeout(() => {
           socket.emit('question.new', {
             question: nextQuestion,
             question_number: session.current_question_index + 1,
             total_questions: session.questions.length,
           });
-        }, 2000);
+        }, 5000);
       } else {
+        // Wait 3 seconds before completing
         setTimeout(() => {
           socket.emit('session.completed', {
             message: 'Interview completed!',
             total_questions: session.questions.length,
           });
-        }, 2000);
+        }, 3000);
       }
     }
   });
