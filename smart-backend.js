@@ -10,6 +10,8 @@ const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
 const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,10 +30,47 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 }) : null;
 
-// In-memory storage
-const users = new Map();
-const sessions = new Map();
-const sessionData = new Map();
+// Persistent storage file paths
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const SESSION_DATA_FILE = path.join(DATA_DIR, 'session-data.json');
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  console.log('📁 Created data directory for persistent storage');
+}
+
+// Load data from files or initialize empty
+function loadData(filePath, defaultValue = {}) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return new Map(Object.entries(data));
+    }
+  } catch (error) {
+    console.error(`Error loading ${filePath}:`, error.message);
+  }
+  return new Map(Object.entries(defaultValue));
+}
+
+// Save data to files
+function saveData(filePath, mapData) {
+  try {
+    const obj = Object.fromEntries(mapData);
+    fs.writeFileSync(filePath, JSON.stringify(obj, null, 2), 'utf8');
+  } catch (error) {
+    console.error(`Error saving ${filePath}:`, error.message);
+  }
+}
+
+// Persistent storage with auto-save
+const users = loadData(USERS_FILE);
+const sessions = loadData(SESSIONS_FILE);
+const sessionData = loadData(SESSION_DATA_FILE);
+
+console.log(`💾 Loaded ${users.size} users, ${sessions.size} sessions from persistent storage`);
 
 app.use(cors());
 app.use(express.json());
@@ -492,6 +531,7 @@ app.post('/api/auth/register', (req, res) => {
     };
 
     users.set(email, user);
+    saveData(USERS_FILE, users); // Save to disk
     const token = jwt.sign({ candidateId: userId }, JWT_SECRET, { expiresIn: '24h' });
 
     console.log(`✅ User registered: ${email}`);
@@ -572,6 +612,20 @@ app.post('/api/documents/parse-job-description', (req, res) => {
 
 app.post('/api/sessions/create', async (req, res) => {
   try {
+    const authHeader = req.headers.authorization;
+    let candidateId = null;
+    
+    // Extract candidate ID from JWT token
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, JWT_SECRET);
+        candidateId = decoded.candidateId;
+      } catch (err) {
+        console.log('Token verification failed:', err.message);
+      }
+    }
+
     const sessionId = `session_${Date.now()}`;
     const { resumeData, jobDescriptionData, config } = req.body;
 
@@ -580,6 +634,7 @@ app.post('/api/sessions/create', async (req, res) => {
       jobDescriptionData,
       config,
     });
+    saveData(SESSION_DATA_FILE, sessionData); // Save to disk
 
     console.log(`🧠 Generating smart questions for session: ${sessionId}`);
 
@@ -587,6 +642,7 @@ app.post('/api/sessions/create', async (req, res) => {
 
     const session = {
       id: sessionId,
+      candidateId: candidateId, // Link session to user
       status: 'active',
       created_at: new Date().toISOString(),
       current_question_index: 0,
@@ -595,6 +651,7 @@ app.post('/api/sessions/create', async (req, res) => {
     };
 
     sessions.set(sessionId, session);
+    saveData(SESSIONS_FILE, sessions); // Save to disk
 
     console.log(`✅ Session created with ${questions.length} personalized questions`);
 
@@ -690,7 +747,11 @@ app.get('/api/sessions/:sessionId/report', (req, res) => {
 });
 
 app.get('/api/candidates/:candidateId/sessions', (req, res) => {
+  const { candidateId } = req.params;
+  
+  // Filter sessions by candidate ID
   const candidateSessions = Array.from(sessions.values())
+    .filter(s => s.candidateId === candidateId) // Only return user's own sessions
     .map(s => ({
       id: s.id,
       created_at: s.created_at,
@@ -703,6 +764,7 @@ app.get('/api/candidates/:candidateId/sessions', (req, res) => {
     }))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+  console.log(`📊 Retrieved ${candidateSessions.length} sessions for candidate: ${candidateId}`);
   res.json({ sessions: candidateSessions });
 });
 
@@ -753,6 +815,7 @@ io.on('connection', (socket) => {
         evaluation: evaluation,
         timestamp: new Date().toISOString(),
       });
+      saveData(SESSIONS_FILE, sessions); // Save to disk after response
 
       console.log(`✅ Answer evaluated: Score ${evaluation.score}/100`);
 
@@ -775,6 +838,7 @@ io.on('connection', (socket) => {
         }, 5000);
       } else {
         session.status = 'completed';
+        saveData(SESSIONS_FILE, sessions); // Save completed status
         setTimeout(() => {
           socket.emit('session.completed', {
             message: 'Interview completed!',
@@ -815,13 +879,15 @@ server.listen(PORT, () => {
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
   console.log(`🤖 OpenAI Integration: ${openai ? '✅ ENABLED (will try first)' : '❌ DISABLED'}`);
   console.log(`🧠 Smart Algorithm: ✅ ENABLED (fallback)`);
+  console.log(`💾 Persistent Storage: ✅ ENABLED (data saved to disk)`);
   console.log(`🔌 WebSocket support: ENABLED`);
   console.log('\n✨ Features:');
   console.log('   - Tries OpenAI GPT-3.5-turbo first');
   console.log('   - Falls back to smart algorithm if OpenAI fails');
   console.log('   - Smart question generation based on resume/JD');
   console.log('   - Intelligent answer evaluation');
-  console.log('   - Personalized feedback\n');
+  console.log('   - Personalized feedback');
+  console.log('   - Data persists across server restarts\n');
   if (openai) {
     console.log('💡 Note: If OpenAI fails due to quota, smart algorithm will be used automatically\n');
   }
